@@ -5,6 +5,8 @@ define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: 'sneaker_shop');
 
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
 // Session names - admin uses separate cookie to allow simultaneous login
 if (!defined('USER_SESSION_NAME')) {
     define('USER_SESSION_NAME', 'sneaker_user_sess');
@@ -31,6 +33,35 @@ function getSellPrice($import_price, $profit_rate) {
 
 function formatPrice($price) {
     return number_format($price, 0, ',', '.') . ' ₫';
+}
+
+function discountDateTimestamp($value) {
+    if (empty($value)) return null;
+    $timestamp = strtotime($value);
+    return $timestamp === false ? null : $timestamp;
+}
+
+function isDiscountExpired($discount, $now = null) {
+    $end = discountDateTimestamp($discount['end_date'] ?? null);
+    return $end !== null && ($now ?? time()) > $end;
+}
+
+function isDiscountCurrentlyValid($discount, $now = null) {
+    $now = $now ?? time();
+    $start = discountDateTimestamp($discount['start_date'] ?? null);
+    $end = discountDateTimestamp($discount['end_date'] ?? null);
+
+    if ($start !== null && $now < $start) return false;
+    if ($end !== null && $now > $end) return false;
+    if (
+        isset($discount['max_uses'], $discount['total_used']) &&
+        $discount['max_uses'] !== null &&
+        (int)$discount['total_used'] >= (int)$discount['max_uses']
+    ) {
+        return false;
+    }
+
+    return true;
 }
 
 function isLoggedIn() {
